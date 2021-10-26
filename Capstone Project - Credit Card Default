@@ -1,2 +1,142 @@
-df['Gender']=df['CODE_GENDER'].apply(lambda x:1 if x=='M' else 0)
-df['Owns_Car']=df['FLAG_OWN_CAR'].apply(lambda x:1 if x=='Y' else 0)
+#!/usr/bin/env python
+# coding: utf-8
+
+# Import Libraries
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sb
+
+
+#Read Input File
+appdata=pd.read_csv('./Data/application_data.csv')
+
+#Check Categorical Column Values
+
+appdata['NAME_CONTRACT_TYPE'].isna().sum()
+appdata['NAME_CONTRACT_TYPE'].value_counts()
+
+#Contract Type has two values i.e. two types of loans. making this categorical valriable into two boolean indicator.
+appdata['CASH_LOAN']=appdata['NAME_CONTRACT_TYPE'].apply(lambda x:1 if x=='Cash loans' else 0)
+appdata['REVOLVING_LOAN']=appdata['NAME_CONTRACT_TYPE'].apply(lambda x:1 if x=='Revolving loans' else 0)
+
+#Gender has two values making this categorical valriable into two boolean indicator.
+appdata['MALE']=appdata['CODE_GENDER'].apply(lambda x:1 if x=='M' else 0)
+appdata['FEMALE']=appdata['CODE_GENDER'].apply(lambda x:1 if x in ('F','XNA') else 0)
+
+
+#Occupation Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
+category1 = ['Core staff','High skill tech staff','HR staff','IT staff','Accountants','Managers','Medicine staff','Private service staff',
+            'Realty agents','Secretaries']
+category2 = ['Drivers','Low-skill Laborers','Security staff','Waiters/barmen staff']
+category3= ['Laborers','Cleaning staff','Cooking staff','Sales staff']
+
+def occ_type_norm(appdata):
+    if appdata['OCCUPATION_TYPE'] in category1:
+        return 0.0635
+    elif appdata['OCCUPATION_TYPE'] in category2:
+        return 0.1161
+    elif appdata['OCCUPATION_TYPE'] in category3:
+        return 0.1021
+    else:
+        return 0.0635
+    
+appdata['OCC_TYPE_NUM']=appdata.apply(occ_type_norm,axis=1)
+
+#Organization Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
+category1 = ['Business Entity Type 1','Business Entity Type 2','Business Entity Type 3','Postal','Security','Mobile',
+             'Advertising']
+category2 = ['Self-employed','Agriculture','Cleaning','Construction','Realtor','Restaurant','Transport: type 3',
+             'Transport: type 4']
+category3 = ['Transport: type 1','Transport: type 2','XNA','Other','University','Telecom','Services','Security Ministries',
+            'School','Religion','Police','Military','Medicine','Legal Services','Kindergarten','Insurance','Culture',
+            'Electricity','Emergency','Government','Hotel','Housing','Bank']
+category4 = ['Trade: type 7','Trade: type 3','Industry: type 9','Industry: type 3','Industry: type 11','Trade: type 2',
+             'Industry: type 7','Industry: type 1','Industry: type 4','Trade: type 6','Industry: type 5','Industry: type 2',
+             'Industry: type 12','Trade: type 1','Industry: type 6','Industry: type 10','Industry: type 13','Trade: type 4',
+             'Trade: type 5','Industry: type 8']
+
+def org_type_norm(appdata):
+    if appdata['ORGANIZATION_TYPE'] in category1:
+        return 0.0913
+    elif appdata['ORGANIZATION_TYPE'] in category2:
+        return 0.1045
+    elif appdata['ORGANIZATION_TYPE'] in category3:
+        return 0.0615
+    elif appdata['ORGANIZATION_TYPE'] in category4:
+        return 0.0884
+    else:
+        return 0.0
+    
+appdata['ORG_TYPE_NUM']=appdata.apply(org_type_norm,axis=1)
+
+#Fill the NULL vaalues with string MISSING for computation.
+appdata['FONDKAPREMONT_MODE']=appdata['FONDKAPREMONT_MODE'].fillna('MISSING')
+
+#Create a new dummy variable to represent data present or not. 1= present, 0=missing
+appdata['FONDKAPREMONT_MODE_PRESENT'] = appdata['FONDKAPREMONT_MODE'].apply(lambda x:0 if x in ('MISSING','not specified') else 1)
+
+#Fill the NULL vaalues with string MISSING for computation.
+appdata['HOUSETYPE_MODE']=appdata['HOUSETYPE_MODE'].fillna('MISSING')
+
+#Create a new dummy variable to represent data present or not. 1= block of flats, 0=missing
+appdata['HOUSETYPE_MODE_PRESENT'] = appdata['HOUSETYPE_MODE'].apply(lambda x:1 if x == 'block of flats' else 0)
+
+#Wall Materials Categorical Variable. Converting it to numerical values by weighted average with the similar categories
+category1 = ['Panel','Monolithic']
+category2 = ['Stone, brick','Block','Mixed','Others']
+category3 = ['Wooden','Blank']
+
+def wall_material(appdata):
+    if appdata['WALLSMATERIAL_MODE'] in category1:
+        return 0.0631
+    elif appdata['WALLSMATERIAL_MODE'] in category2:
+        return 0.0738
+    elif appdata['WALLSMATERIAL_MODE'] in category3:
+        return 0.0915
+    else:
+        return 0.0915
+    
+appdata['WALLSMATERIAL_MODE_NUM']=appdata.apply(wall_material,axis=1)
+
+#Fill the NULL vaalues with string MISSING for computation.
+appdata['EMERGENCYSTATE_MODE']=appdata['EMERGENCYSTATE_MODE'].fillna('MISSING')
+
+#Create a new dummy variable to represent data present or not. 1= present, 0=missing
+appdata['EMERGENCYSTATE_MODE_PRESENT'] = appdata['EMERGENCYSTATE_MODE'].apply(lambda x:0 if x == 'MISSING' else 1)
+
+#Drop Categorical Columns
+categoricalcolumns = ['NAME_CONTRACT_TYPE','CODE_GENDER','OCCUPATION_TYPE','ORGANIZATION_TYPE','FONDKAPREMONT_MODE',
+                      'HOUSETYPE_MODE','WALLSMATERIAL_MODE','EMERGENCYSTATE_MODE']
+
+#drop categorical columns from the dataset
+for name in categoricalcolumns:
+    appdata=appdata.drop(columns=name)
+
+
+appdata.head()
+
+#Investigate the entire dataset about default and regular loans
+for name in appdata.columns:
+    if appdata[name].isna().sum() > 0:
+        percent = round(((appdata[name].isna().sum())/(appdata[name].count()+appdata[name].isna().sum()))*100,2)
+        if percent > 0.00:
+            print(name+','+str(appdata[name].isna().sum())+','+str(percent)+'%')
+
+#Number of People Defaulted on Loan v/s Total Population
+print('Number of Applicant with payment default: ',appdata['TARGET'].sum())
+print('Proportion of Applicant with payment default: ',round((appdata['TARGET'].sum()/len(appdata))*100,2),'%')
+
+#Relationship with Contract Type and Load Default
+#sb.countplot(x='NAME_CONTRACT_TYPE',data=appdata[appdata['TARGET']==1])
+df=appdata[appdata['TARGET']==1]
+print('Proportion of Applicant default for Cash Loan : ',round((df['CASH_LOAN'].sum()/len(appdata[appdata['CASH_LOAN']==1]))*100,2),'%')
+print('Proportion of Applicant default for Revolving Loan : ',round((df['REVOLVING_LOAN'].sum()/len(appdata[appdata['REVOLVING_LOAN']==1]))*100,2),'%')
+
+
+#print(appdata['OCCUPATION_TYPE'].isna().sum())
+print(appdata['WALLSMATERIAL_MODE'].value_counts())
+#print(df['OCCUPATION_TYPE'].value_counts())
+
+
