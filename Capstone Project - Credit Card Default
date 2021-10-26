@@ -1,4 +1,2 @@
-df['Male_Gender']=df['CODE_GENDER'].apply(lambda x:1 if x=='M' else 0)
-df['Female_Gender']=df['CODE_GENDER'].apply(lambda x:1 if x=='F' else 0)
+df['Gender']=df['CODE_GENDER'].apply(lambda x:1 if x=='M' else 0)
 df['Owns_Car']=df['FLAG_OWN_CAR'].apply(lambda x:1 if x=='Y' else 0)
-df['Doesnt_Own_Car']=df['FLAG_OWN_CAR'].apply(lambda x:1 if x=='N' else 0)
