@@ -27,22 +27,14 @@ appdata['FEMALE']=appdata['CODE_GENDER'].apply(lambda x:1 if x in ('F','XNA') el
 
 
 #Occupation Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
-category1 = ['Core staff','High skill tech staff','HR staff','IT staff','Accountants','Managers','Medicine staff','Private service staff',
+#Occupation Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
+highSkilled = ['Core staff','High skill tech staff','HR staff','IT staff','Accountants','Managers','Medicine staff','Private service staff',
             'Realty agents','Secretaries']
-category2 = ['Drivers','Low-skill Laborers','Security staff','Waiters/barmen staff']
-category3= ['Laborers','Cleaning staff','Cooking staff','Sales staff']
+losSkilled = ['Drivers','Low-skill Laborers','Security staff','Waiters/barmen staff','Laborers','Cleaning staff',
+              'Cooking staff','Sales staff']
 
-def occ_type_norm(appdata):
-    if appdata['OCCUPATION_TYPE'] in category1:
-        return 0.0635
-    elif appdata['OCCUPATION_TYPE'] in category2:
-        return 0.1161
-    elif appdata['OCCUPATION_TYPE'] in category3:
-        return 0.1021
-    else:
-        return 0.0635
-    
-appdata['OCC_TYPE_NUM']=appdata.apply(occ_type_norm,axis=1)
+appdata['HIGH_SKILLED']=appdata['OCCUPATION_TYPE'].apply(lambda x:1 if x in highSkilled else 0)
+appdata['LOW_SKILLED']=appdata['OCCUPATION_TYPE'].apply(lambda x:1 if x in lowSkilled else 0)
 
 #Organization Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
 category1 = ['Business Entity Type 1','Business Entity Type 2','Business Entity Type 3','Postal','Security','Mobile',
@@ -105,6 +97,30 @@ appdata['EMERGENCYSTATE_MODE']=appdata['EMERGENCYSTATE_MODE'].fillna('MISSING')
 
 #Create a new dummy variable to represent data present or not. 1= present, 0=missing
 appdata['EMERGENCYSTATE_MODE_PRESENT'] = appdata['EMERGENCYSTATE_MODE'].apply(lambda x:0 if x == 'MISSING' else 1)
+
+#Create Dummy Variable for highly missing features. 1 - Data Present 0 - Data Missing. Replace missing values with mean.
+featureList = ['COMMONAREA_AVG','COMMONAREA_MODE','COMMONAREA_MEDI','NONLIVINGAPARTMENTS_AVG','NONLIVINGAPARTMENTS_MODE',
+               'NONLIVINGAPARTMENTS_MEDI','LIVINGAPARTMENTS_AVG','LIVINGAPARTMENTS_MODE',
+               'LIVINGAPARTMENTS_MEDI','FLOORSMIN_AVG','FLOORSMIN_MODE','FLOORSMIN_MEDI','YEARS_BUILD_AVG','YEARS_BUILD_MODE',
+               'YEARS_BUILD_MEDI','OWN_CAR_AGE','LANDAREA_AVG','LANDAREA_MODE','LANDAREA_MEDI','BASEMENTAREA_AVG',
+               'BASEMENTAREA_MODE','BASEMENTAREA_MEDI','EXT_SOURCE_1','NONLIVINGAREA_AVG','NONLIVINGAREA_MODE',
+               'NONLIVINGAREA_MEDI','ELEVATORS_AVG','ELEVATORS_MODE','ELEVATORS_MEDI','APARTMENTS_AVG',
+               'APARTMENTS_MODE','APARTMENTS_MEDI','ENTRANCES_AVG','ENTRANCES_MODE','ENTRANCES_MEDI','LIVINGAREA_AVG',
+               'LIVINGAREA_MODE','LIVINGAREA_MEDI','FLOORSMAX_AVG','FLOORSMAX_MODE','FLOORSMAX_MEDI',
+               'YEARS_BEGINEXPLUATATION_AVG','YEARS_BEGINEXPLUATATION_MODE','YEARS_BEGINEXPLUATATION_MEDI','TOTALAREA_MODE',
+               'EXT_SOURCE_3','AMT_REQ_CREDIT_BUREAU_HOUR','AMT_REQ_CREDIT_BUREAU_DAY','AMT_REQ_CREDIT_BUREAU_WEEK',
+               'AMT_REQ_CREDIT_BUREAU_MON','AMT_REQ_CREDIT_BUREAU_QRT','AMT_REQ_CREDIT_BUREAU_YEAR','OBS_30_CNT_SOCIAL_CIRCLE',
+               'DEF_30_CNT_SOCIAL_CIRCLE','OBS_60_CNT_SOCIAL_CIRCLE','DEF_60_CNT_SOCIAL_CIRCLE','EXT_SOURCE_2',
+               'AMT_GOODS_PRICE']
+
+for column in featureList:
+    meanValue = appdata[column].mean()
+#    print(column+' mean ',meanValue)
+#    print('Number of Rows Missing Value ',appdata[column].isna().sum())
+    appdata[column].fillna('MISSING',inplace=True)
+    appdata[column+'_NORM'] = appdata[column].apply(lambda x:0 if x == 'MISSING' else 1)
+    appdata[column] = appdata[column].apply(lambda x:meanValue if x == 'MISSING' else x)
+#    print(appdata[column+'_NORM'].value_counts())
 
 #Drop Categorical Columns
 categoricalcolumns = ['NAME_CONTRACT_TYPE','CODE_GENDER','OCCUPATION_TYPE','ORGANIZATION_TYPE','FONDKAPREMONT_MODE',
