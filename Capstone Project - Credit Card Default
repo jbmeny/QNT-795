@@ -25,6 +25,47 @@ appdata['REVOLVING_LOAN']=appdata['NAME_CONTRACT_TYPE'].apply(lambda x:1 if x=='
 appdata['MALE']=appdata['CODE_GENDER'].apply(lambda x:1 if x=='M' else 0)
 appdata['FEMALE']=appdata['CODE_GENDER'].apply(lambda x:1 if x in ('F','XNA') else 0)
 
+#Owning a car has two values making this categorical valriable into two boolean indicator.
+df['Owns_Car']=df['FLAG_OWN_CAR'].apply(lambda x:1 if x=='Y' else 0)
+df['Doesnt_Own_Car']=df['FLAG_OWN_CAR'].apply(lambda x:1 if x=='N' else 0)
+
+#Education type was grouped into two values making this categorical variable into two boolean indicator.
+df['College_Education']=df['NAME_EDUCATION_TYPE'].apply(lambda x:1 if x in ('Academic degree','Higher education') else 0)
+df['Less_Than_College_Education']=df['NAME_EDUCATION_TYPE'].apply(lambda x:1 if x in ('Incomplete higher','Lower secondary', 'Secondary / secondary special') else 0)
+
+#Name type suite was grouped into two values making this categorical variable into two boolean indicator.
+df['Unaccompanied']=df['NAME_TYPE_SUITE'].fillna('MISSING')
+df['Accompanied']=df['NAME_TYPE_SUITE'].apply(lambda x:1 if x in ('Children','Family','Group of people','Spouse, partner') else 0)
+df['Unaccompanied']=df['NAME_TYPE_SUITE'].apply(lambda x:1 if x in ('Other_A','Other_B','Unaccompanied','MISSING') else 0)
+
+#Name income type was grouped into two values making this categorical variable into two boolean indicator.
+df['Workforce']=df['NAME_INCOME_TYPE'].apply(lambda x:1 if x in ('Businessman','Commercial associate','State servant','Working') else 0)
+df['NonWorkforce']=df['NAME_INCOME_TYPE'].apply(lambda x:1 if x in ('Maternity leave','Pensioner','Student','Unemployed') else 0)
+
+#Housing type was grouped into two values making this categorical variable into two boolean indicator.
+df['Own Apt']=df['NAME_HOUSING_TYPE'].apply(lambda x:1 if x in ('Co-op apartment','House / apartment','Municipal apartment','Office apartment') else 0)
+df['Does Not Own Apt']=df['NAME_HOUSING_TYPE'].apply(lambda x:1 if x in ('Rented apartment','With parents') else 0)
+
+#Weekday application process was grouped into two values making this categorical variable into two boolean indicator.
+df['T_W_TH_F_APP']=df['WEEKDAY_APPR_PROCESS_START'].apply(lambda x:1 if x in ('TUESDAY','WEDNESDAY','THURSDAY','FRIDAY') else 0)
+df['SAT_SUN_MON_APP']=df['WEEKDAY_APPR_PROCESS_START'].apply(lambda x:1 if x in ('SATURDAY','SUNDAY','MONDAY') else 0)
+
+#Family Status Categorical Variable. Converting it to numerical values by weighted average with the similar categories
+category1 = ['Civil marriage','Single / not married']
+category2 = ['Married','Widow']
+category3 = ['Separated','Unkown']
+
+def Family_Status(df):
+    if df['NAME_FAMILY_STATUS'] in category1:
+        return 0.0986
+    elif df['NAME_FAMILY_STATUS'] in category2:
+        return 0.0743
+    elif df['NAME_FAMILY_STATUS'] in category3:
+        return 0.0819
+    else:
+        return 0.0819
+    
+df['NAME_FAMILY_STATUS']=df.apply(Family_Status,axis=1)
 
 #Occupation Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
 #Occupation Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
