@@ -196,4 +196,9 @@ print('Proportion of Applicant default for Revolving Loan : ',round((df['REVOLVI
 print(appdata['WALLSMATERIAL_MODE'].value_counts())
 #print(df['OCCUPATION_TYPE'].value_counts())
 
+#Split Files to make default v/s non-default 1:2 ratio
+df1=appdata[appdata['TARGET']==1]
+df2=appdata[appdata['TARGET']==0].sample(frac=0.2,random_state=0)
+frames=[df1,df2]
+dfNew = pd.concat(frames)
 
