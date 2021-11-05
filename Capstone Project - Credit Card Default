@@ -202,3 +202,20 @@ df2=appdata[appdata['TARGET']==0].sample(frac=0.2,random_state=0)
 frames=[df1,df2]
 dfNew = pd.concat(frames)
 
+#lasso regression- this code assumes the logistic regression model has already been setup as well as the train_test_split function - included below as reference
+#noobs = 1000000
+#predictors = []
+#for column in appdata.columns:
+    #if column != 'TARGET':
+        predictors.append(column)
+    #X = appdata[predictors].head(noobs)
+    #y = appdata['TARGET'].head(noobs)
+#from sklearn.model_selection import train_test_split
+#X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=31)
+
+from sklearn.linear_model import Lasso
+lasso51 = Lasso(alpha=51, max_iter=1000000)
+lasso51.fit(X_train,y_train)
+coeff_used51 = np.sum(lasso51.coef_!=0)
+print("number of features used: for alpha =0.51:", coeff_used51)
+print(lasso10.coef_)
