@@ -7,6 +7,20 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sb
+import time
+from sklearn.decomposition import PCA
+from sklearn.decomposition import TruncatedSVD
+from sklearn.decomposition import FactorAnalysis
+from sklearn.decomposition import FastICA
+from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import chi2,SelectKBest
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import SGDClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import classification_report
 
 
 #Read Input File
@@ -71,7 +85,7 @@ df['NAME_FAMILY_STATUS']=df.apply(Family_Status,axis=1)
 #Occupation Type Categorical Variable. Converting it to numerical values by weighted average with the similar categories
 highSkilled = ['Core staff','High skill tech staff','HR staff','IT staff','Accountants','Managers','Medicine staff','Private service staff',
             'Realty agents','Secretaries']
-losSkilled = ['Drivers','Low-skill Laborers','Security staff','Waiters/barmen staff','Laborers','Cleaning staff',
+lowSkilled = ['Drivers','Low-skill Laborers','Security staff','Waiters/barmen staff','Laborers','Cleaning staff',
               'Cooking staff','Sales staff']
 
 appdata['HIGH_SKILLED']=appdata['OCCUPATION_TYPE'].apply(lambda x:1 if x in highSkilled else 0)
@@ -139,6 +153,8 @@ appdata['EMERGENCYSTATE_MODE']=appdata['EMERGENCYSTATE_MODE'].fillna('MISSING')
 #Create a new dummy variable to represent data present or not. 1= present, 0=missing
 appdata['EMERGENCYSTATE_MODE_PRESENT'] = appdata['EMERGENCYSTATE_MODE'].apply(lambda x:0 if x == 'MISSING' else 1)
 
+appdata['OWN_REALTY_NUM'] = appdata['FLAG_OWN_REALTY'].apply(lambda x:1 if x == 'Y' else 0)
+
 #Create Dummy Variable for highly missing features. 1 - Data Present 0 - Data Missing. Replace missing values with mean.
 featureList = ['COMMONAREA_AVG','COMMONAREA_MODE','COMMONAREA_MEDI','NONLIVINGAPARTMENTS_AVG','NONLIVINGAPARTMENTS_MODE',
                'NONLIVINGAPARTMENTS_MEDI','LIVINGAPARTMENTS_AVG','LIVINGAPARTMENTS_MODE',
@@ -156,18 +172,38 @@ featureList = ['COMMONAREA_AVG','COMMONAREA_MODE','COMMONAREA_MEDI','NONLIVINGAP
 
 for column in featureList:
     meanValue = appdata[column].mean()
-#    print(column+' mean ',meanValue)
-#    print('Number of Rows Missing Value ',appdata[column].isna().sum())
     appdata[column].fillna('MISSING',inplace=True)
     appdata[column+'_NORM'] = appdata[column].apply(lambda x:0 if x == 'MISSING' else 1)
     appdata[column] = appdata[column].apply(lambda x:meanValue if x == 'MISSING' else x)
-#    print(appdata[column+'_NORM'].value_counts())
 
+#Create Income to Loan Amount Ratio
+appdata['INCOME_TO_LOAN_RATIO'] = appdata['AMT_CREDIT']/appdata['AMT_INCOME_TOTAL']
+
+#Impute missing values with mean
+#AMT_ANNUITY    12
+#CNT_FAM_MEMBERS    2
+#DAYS_LAST_PHONE_CHANGE    1
+mean = appdata['AMT_ANNUITY'].mean()
+appdata['AMT_ANNUITY'].fillna(mean,inplace=True)
+mean = appdata['CNT_FAM_MEMBERS'].mean()
+appdata['CNT_FAM_MEMBERS'].fillna(mean,inplace=True)
+mean = appdata['DAYS_LAST_PHONE_CHANGE'].mean()
+appdata['DAYS_LAST_PHONE_CHANGE'].fillna(mean,inplace=True)
+
+appdata['DAYS_BIRTH'] = appdata['DAYS_BIRTH'] * (-1)
+appdata['DAYS_EMPLOYED'] = appdata['DAYS_EMPLOYED'] * (-1)
+appdata['DAYS_REGISTRATION'] = appdata['DAYS_REGISTRATION'] * (-1)
+appdata['DAYS_ID_PUBLISH'] = appdata['DAYS_ID_PUBLISH'] * (-1)
+appdata['DAYS_LAST_PHONE_CHANGE'] = appdata['DAYS_LAST_PHONE_CHANGE'] * (-1)
+
+#Convert DAYS EMPLOYED to EMMPLOYED v/s UNEMPLOYED INDICATOR
+appdata['EMPLOYED'] = appdata['DAYS_EMPLOYED'].apply(lambda x:1 if x>0 else 0)
+    
 #Drop Categorical Columns
 categoricalcolumns = ['NAME_CONTRACT_TYPE','CODE_GENDER','OCCUPATION_TYPE','ORGANIZATION_TYPE','FONDKAPREMONT_MODE',
-                      'HOUSETYPE_MODE','WALLSMATERIAL_MODE','EMERGENCYSTATE_MODE']
-
-#drop categorical columns from the dataset
+                      'HOUSETYPE_MODE','WALLSMATERIAL_MODE','EMERGENCYSTATE_MODE','FLAG_OWN_CAR','NAME_EDUCATION_TYPE',
+                      'NAME_TYPE_SUITE','NAME_INCOME_TYPE','NAME_HOUSING_TYPE','WEEKDAY_APPR_PROCESS_START',
+                      'NAME_FAMILY_STATUS','FLAG_OWN_REALTY','SK_ID_CURR','DAYS_EMPLOYED']
 for name in categoricalcolumns:
     appdata=appdata.drop(columns=name)
 
@@ -201,6 +237,56 @@ df1=appdata[appdata['TARGET']==1]
 df2=appdata[appdata['TARGET']==0].sample(frac=0.2,random_state=0)
 frames=[df1,df2]
 dfNew = pd.concat(frames)
+
+noobs = 1000000
+predictors = []
+for column in dfNew.columns:
+    if column != 'TARGET':
+        predictors.append(column)
+    X = dfNew[predictors].head(noobs)
+    y = dfNew['TARGET'].head(noobs)
+
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2,random_state=0)
+
+#Logistic Regression
+lr = LogisticRegression(solver='lbfgs',max_iter=1000)
+lrm=lr.fit(X_train,y_train)
+
+y_pred = lrm.predict(X_test)
+print('Logistic Regression : ','\n')
+print(classification_report(y_test,y_pred))
+
+#Random Forest Classifier
+rfc = RandomForestClassifier(n_estimators=1000)
+rfcm = rfc.fit(X_train,y_train)
+y_pred = rfcm.predict(X_test)
+print('Random Forest Classifier : ','\n')
+print(classification_report(y_test,y_pred))
+
+#Random Forrest Feature Importance
+importances = rfcm.feature_importances_
+feature_names =[f"feature" {i} for i in range(X_train.shape[1])]
+forest_importances = pd.Series(importances,index=feature_names)
+print(forest_importances.nlargest(n=30))
+colList = list(X_train.columns.values.tolist())
+comImp[]
+for name in forest_importances.nlargest(n=30).incex:
+    print(name,' ',colList[int(name[8:])])
+    colImp.append(colList[int(name[8:])])
+
+#NewDataFrame with RFC Top 30 Features
+X_new = X[colImp]
+X_train,X_test,y_train,y_test = train_test_split(X_new,y,test_size=0.2,random_state=0)
+
+lrm=lr.fit(X_train,y_train)
+y_pred = lrm.predict(X_test)
+print('Logistic Regression with top 30 Features : ','\n')
+print(classification_report(y_test,y_pred))
+
+rfcm = rfc.fit(X_train,y_train)
+y_pred = rfcm.predict(X_test)
+print('Random Forest Classifier with top 30 Features : ','\n')
+print(classification_report(y_test,y_pred))
 
 #lasso regression- this code assumes the logistic regression model has already been setup as well as the train_test_split function - included below as reference
 #noobs = 1000000
