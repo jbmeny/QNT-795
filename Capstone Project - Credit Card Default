@@ -288,20 +288,36 @@ y_pred = rfcm.predict(X_test)
 print('Random Forest Classifier with top 30 Features : ','\n')
 print(classification_report(y_test,y_pred))
 
-#lasso regression- this code assumes the logistic regression model has already been setup as well as the train_test_split function - included below as reference
-#noobs = 1000000
-#predictors = []
-#for column in appdata.columns:
-    #if column != 'TARGET':
-        predictors.append(column)
-    #X = appdata[predictors].head(noobs)
-    #y = appdata['TARGET'].head(noobs)
-#from sklearn.model_selection import train_test_split
-#X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=31)
-
+#Lasso regression top 29 features
 from sklearn.linear_model import Lasso
-lasso51 = Lasso(alpha=51, max_iter=1000000)
-lasso51.fit(X_train,y_train)
-coeff_used51 = np.sum(lasso51.coef_!=0)
-print("number of features used: for alpha =0.51:", coeff_used51)
-print(lasso10.coef_)
+lasso1 = Lasso(alpha=.002, max_iter=1000000)
+lasso1.fit(X_train,y_train)
+coeff_used = np.sum(lasso1.coef_!=0)
+print("number of features used: for alpha =0.002:", coeff_used)
+print(lasso1.coef_)
+
+#forward selection method using mlxtend to get the top 30 features
+from mlxtend.feature_selection import SequentialFeatureSelector as sfs
+X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.3,random_state=0)
+sfs = sfs(LinearRegression(),
+         k_features=30,
+         forward=True,
+         floating=False,
+         verbose=2,
+         scoring='r2',
+         cv=0)
+sfs.fit(X,y)
+print(sfs.k_feature_names_)
+#this took about 15 min run
+
+#backwards selection method to get top 30 features
+sbs = sfs(LinearRegression(),
+         k_features=30,
+         forward=False,
+         floating=False,
+         verbose=2,
+         scoring='r2',
+         cv=0)
+sbs.fit(X, y)
+print(sbs.k_feature_names_)
+#ran this overnight , it probably took a few hours to run
